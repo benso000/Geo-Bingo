@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Geo-Bingo</title>
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css">
 <style>
 :root{--bg:#f6f7fb;--card:#fff;--tx:#1a1d29;--mu:#6b7080;--ac:#e8453c;--ok:#1f9d55;--bd:#dde0ea;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#14161d;--card:#1e212b;--tx:#eceef5;--mu:#9aa0b3;--bd:#323748}}
@@ -78,7 +78,7 @@ Rote Telefonzelle</textarea>
 <div id="res" class="hid"><h2 style="margin-top:20px">Ergebnis</h2><div id="sum" class="card"></div><div id="gal" class="gal"></div><div class="row" style="margin-top:12px"><button id="again">Neue Runde</button></div></div>
 <input type="file" id="file" accept="image/*" class="hid">
 </div>
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
 <script>
 const $=id=>document.getElementById(id);
 const LOC=[[48.8584,2.2945],[35.6595,139.7005],[40.7580,-73.9855],[-33.8568,151.2153],[51.5007,-0.1246],[41.9029,12.4534],[-22.9519,-43.2105],[25.1972,55.2744],[55.7539,37.6208],[19.4326,-99.1332],[-33.9249,18.4241],[1.2834,103.8607],[13.7563,100.5018],[28.6129,77.2295],[52.5163,13.3777],[41.3874,2.1686],[59.3293,18.0686],[-34.6037,-58.3816],[37.5665,126.9780],[-1.2921,36.8219],[64.1466,-21.9426],[50.0875,14.4213],[38.7223,-9.1393],[45.4642,9.1900],[-12.0464,-77.0428],[30.0444,31.2357],[43.6532,-79.3832],[37.7749,-122.4194],[21.3069,-157.8583],[-36.8485,174.7633],[47.4979,19.0402],[60.1699,24.9384]];
@@ -89,7 +89,8 @@ let map=null,peg=null;
 function go(la,lo){la=(+la).toFixed(5);lo=(+lo).toFixed(5);
  $("sv").src="https://www.google.com/maps?layer=c&cbll="+la+","+lo+"&cbp=12,0,0,0,0&output=svembed";
  tabUrl="https://www.google.com/maps/@?api=1&map_action=pano&viewpoint="+la+","+lo;}
-function initMap(){if(!window.L||map)return;
+function initMap(){if(map)return;
+ if(!window.L){$("map").innerHTML="<div style=\"padding:12px;color:#222;font-size:13px\">Karte konnte nicht geladen werden. Adblocker oder Tracking-Schutz für diese Seite ausschalten und neu laden.</div>";return}
  map=L.map("map",{worldCopyJump:true,minZoom:1}).setView([20,0],2);
  L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:18,attribution:"© OpenStreetMap"}).addTo(map);
  peg=L.marker([20,0],{draggable:true,icon:L.divIcon({className:"peg",html:"🚶",iconSize:[28,28],iconAnchor:[14,14]})}).addTo(map);
