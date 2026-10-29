@@ -52,6 +52,10 @@ iframe{width:100%;height:62vh;min-height:340px;border:0;border-radius:12px;backg
 #top button{padding:7px 11px;font-size:14px}
 #side{position:absolute;left:10px;top:calc(10px + env(safe-area-inset-top,0px));width:min(270px,44vw);max-height:calc(100% - 20px);overflow:auto;z-index:10;background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:8px 10px;opacity:.95}
 #side .wd{margin:5px 0;padding:6px 8px}
+.wd.done{background:rgba(31,157,85,.18)}
+.shot #top,.shot #side,.shot #mm{visibility:hidden}
+#resmap{height:340px;border-radius:12px;margin:12px 0;background:#aad3df}
+.gal a{font-weight:400;color:var(--ac);text-decoration:none}
 </style>
 </head>
 <body>
@@ -76,13 +80,13 @@ Rote Telefonzelle</textarea>
 <div id="game" class="hid">
  <div id="svw"><iframe id="sv" allowfullscreen referrerpolicy="no-referrer-when-downgrade"></iframe>
   <div id="mm"><div id="map"></div><button class="s" id="mmb" title="Karte vergrößern">⛶</button><div id="pegman" title="Auf die Karte ziehen">🚶</div></div></div>
- <div id="top"><div id="timer">00:00</div><button class="s" id="nxt">🎲 Neuer Ort</button><button class="s" id="tab">🪟 Extrafenster</button><button class="s" id="hp" title="Hilfe">?</button><button class="s" id="end">Beenden</button></div>
+ <div id="top"><div id="timer">00:00</div><button class="s" id="nxt">🎲 Random Ort</button><button class="s" id="tab">🪟 Extrafenster</button><button class="s" id="hp" title="Hilfe">?</button><button class="s" id="end">Beenden</button></div>
  <div id="side"><div id="list"></div>
-  <div class="mu" style="margin-top:6px">Begriff anklicken, Screenshot machen, mit Strg/Cmd+V einfügen. ✓ = ohne Bild.</div>
-  <div id="help" class="mu hid" style="margin-top:6px">Screenshot: Windows Win+Shift+S, Mac Strg+Shift+Cmd+4, danach hier Strg/Cmd+V (vorher nicht ins Street-View-Bild klicken). 📷 lädt eine Bilddatei hoch. Minikarte unten rechts: mit ⛶ vergrößern, das gelbe Männchen aus der Ecke auf die Karte ziehen, es springt danach zurück. Ohne Street View an der Stelle bleibt das Bild grau, dann etwas weiter ziehen. Die Karte zeigt nur den Startpunkt. Bleibt das Bild schwarz, blockiert der Browser die Einbettung: dann „Extrafenster“ nutzen.</div></div>
+  <div class="mu" style="margin-top:6px">✓ = gefunden (nochmal klicken nimmt es zurück), 📷 = Bild der Seite speichern.</div>
+  <div id="help" class="mu hid" style="margin-top:6px">📷 speichert ein Bild der Seite (ohne Overlay) samt Ort: beim ersten Mal fragt der Browser nach der Freigabe, dann „Diesen Tab“ teilen, danach genügt ein Klick. Alternativ eigenen Screenshot mit Strg/Cmd+V einfügen (vorher nicht ins Street-View-Bild klicken). Der gespeicherte Ort ist der Startpunkt des aktuellen Bildes, bei weitem Herumlaufen also nur ungefähr. Minikarte unten rechts: mit ⛶ vergrößern, das gelbe Männchen aus der Ecke auf die Karte ziehen, es springt danach zurück. Ohne Street View an der Stelle bleibt das Bild grau, dann etwas weiter ziehen. Die Karte zeigt nur den Startpunkt. Bleibt das Bild schwarz, blockiert der Browser die Einbettung: dann „Extrafenster“ nutzen.</div></div>
 </div>
 
-<div id="res" class="hid"><h2 style="margin-top:20px">Ergebnis</h2><div id="sum" class="card"></div><div id="gal" class="gal"></div><div class="row" style="margin-top:12px"><button id="again">Neue Runde</button></div></div>
+<div id="res" class="hid"><h2 style="margin-top:20px">Ergebnis</h2><div id="sum" class="card"></div><div id="resmap" class="hid"></div><div id="gal" class="gal"></div><div class="row" style="margin-top:12px"><button id="again">Neue Runde</button></div></div>
 <input type="file" id="file" accept="image/*" class="hid">
 </div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
@@ -93,7 +97,8 @@ let words=[],found={},sel=0,end=0,tick=null;
 let tabUrl="";$("tab").onclick=()=>window.open(tabUrl,"svwin","width=1100,height=800");
 const pickLoc=()=>LOC[Math.floor(Math.random()*LOC.length)];
 let map=null,peg=null;
-function go(la,lo){la=(+la).toFixed(5);lo=(+lo).toFixed(5);
+let cur=null;
+function go(la,lo){la=(+la).toFixed(5);lo=(+lo).toFixed(5);cur=[+la,+lo];
  $("sv").src="https://www.google.com/maps?layer=c&cbll="+la+","+lo+"&cbp=12,0,0,0,0&output=svembed";
  tabUrl="https://www.google.com/maps/@?api=1&map_action=pano&viewpoint="+la+","+lo;}
 function initMap(){if(map)return;
@@ -117,28 +122,52 @@ function place(la,lo){go(la,lo);if(peg)peg.setLatLng([la,lo])}
 function loadLoc(){const[a,b]=pickLoc();const j=()=>(Math.random()-.5)*.01;const la=a+j(),lo=b+j();go(la,lo);
  if(peg){peg.setLatLng([la,lo]);map.setView([la,lo],Math.max(map.getZoom(),3))}}
 function renderList(){const l=$("list");l.innerHTML="";
- words.forEach((w,i)=>{const d=document.createElement("div");d.className="wd"+(i===sel?" sel":"")+(found[i]?" done":"");
-  const s=document.createElement("span");s.textContent=(found[i]?"✅ ":"")+w;d.appendChild(s);
-  if(found[i]&&found[i]!==true){const im=document.createElement("img");im.src=found[i];d.appendChild(im)}
-  const ok=document.createElement("button");ok.className="s";ok.textContent="✓";ok.title="Gefunden ohne Bild";ok.onclick=e=>{e.stopPropagation();found[i]=found[i]||true;sync();renderList()};
-  const ph=document.createElement("button");ph.className="s";ph.textContent="📷";ph.onclick=e=>{e.stopPropagation();sel=i;$("file").click()};
+ words.forEach((w,i)=>{const f=found[i];const d=document.createElement("div");d.className="wd"+(i===sel?" sel":"")+(f?" done":"");
+  const s=document.createElement("span");s.textContent=(f?"✅ ":"")+w;d.appendChild(s);
+  if(f&&f.img){const im=document.createElement("img");im.src=f.img;d.appendChild(im)}
+  const ok=document.createElement("button");ok.className="s";ok.textContent="✓";ok.title="Gefunden / wieder zurücknehmen";
+  if(f){ok.style.background="var(--ok)";ok.style.color="#fff"}
+  ok.onclick=e=>{e.stopPropagation();if(found[i])delete found[i];else found[i]={img:null,loc:cur};renderList()};
+  const ph=document.createElement("button");ph.className="s";ph.textContent="📷";ph.title="Bild der Seite speichern";ph.onclick=e=>{e.stopPropagation();sel=i;snap(i)};
   d.append(ok,ph);d.onclick=()=>{sel=i;renderList()};l.appendChild(d)});}
 function shrink(blob){return new Promise(res=>{const u=URL.createObjectURL(blob),im=new Image();im.onload=()=>{const k=Math.min(1,900/im.width),c=document.createElement("canvas");c.width=im.width*k;c.height=im.height*k;c.getContext("2d").drawImage(im,0,0,c.width,c.height);URL.revokeObjectURL(u);res(c.toDataURL("image/jpeg",.8))};im.src=u})}
-async function addShot(blob){if(!game())return;found[sel]=await shrink(blob);sync();renderList();
- const n=words.findIndex((_,i)=>!found[i]);if(n>=0)sel=n;renderList();}
+function nextSel(){const n=words.findIndex((_,i)=>!found[i]);if(n>=0)sel=n}
+async function addShot(blob){if(!game())return;found[sel]={img:await shrink(blob),loc:cur};nextSel();renderList()}
 const game=()=>!$("game").classList.contains("hid");
+let stream=null,vid=null;
+async function capture(){
+ if(!navigator.mediaDevices||!navigator.mediaDevices.getDisplayMedia)return undefined;
+ if(!stream||!stream.active){
+  try{stream=await navigator.mediaDevices.getDisplayMedia({video:true,preferCurrentTab:true,selfBrowserSurface:"include"})}catch(e){return null}
+  vid=document.createElement("video");vid.muted=true;vid.srcObject=stream;await vid.play();await new Promise(r=>setTimeout(r,400))}
+ const g=$("game");g.classList.add("shot");await new Promise(r=>setTimeout(r,250));
+ const k=Math.min(1,1000/vid.videoWidth),c=document.createElement("canvas");c.width=vid.videoWidth*k;c.height=vid.videoHeight*k;
+ c.getContext("2d").drawImage(vid,0,0,c.width,c.height);g.classList.remove("shot");return c.toDataURL("image/jpeg",.8)}
+async function snap(i){const img=await capture();
+ if(img===undefined){$("file").click();return}
+ if(img===null){alert("Ohne Freigabe (diesen Tab teilen) geht das Bild der Seite nicht. Alternative: eigenen Screenshot machen und mit Strg/Cmd+V einfügen.");return}
+ found[i]={img,loc:cur};nextSel();renderList()}
 document.addEventListener("paste",e=>{for(const it of e.clipboardData.items)if(it.type.startsWith("image/")){addShot(it.getAsFile());e.preventDefault();break}});
 $("file").onchange=e=>{if(e.target.files[0])addShot(e.target.files[0]);e.target.value=""};
 const fmt=s=>String(Math.floor(s/60)).padStart(2,"0")+":"+String(s%60).padStart(2,"0");
 function start(ws,mins,at){words=ws;found={};sel=0;end=at+mins*60000;
  $("setup").classList.add("hid");$("res").classList.add("hid");$("game").classList.remove("hid");initMap();if(map)map.invalidateSize();loadLoc();renderList();
  clearInterval(tick);tick=setInterval(()=>{const r=Math.max(0,Math.round((end-Date.now())/1000));$("timer").textContent=fmt(r);if(r<=0)finish()},500);}
+let rmap=null,rlay=null;
 function finish(){clearInterval(tick);$("game").classList.add("hid");$("res").classList.remove("hid");
  const n=Object.keys(found).length;$("sum").textContent="Du hast "+n+" von "+words.length+" Begriffen gefunden."+(n===words.length?" 🎉 Bingo!":"");
- const g=$("gal");g.innerHTML="";words.forEach((w,i)=>{const f=document.createElement("figure");
-  if(found[i]&&found[i]!==true){const im=document.createElement("img");im.src=found[i];f.appendChild(im)}else{const m=document.createElement("div");m.className="miss";m.textContent=found[i]?"Gefunden (ohne Bild)":"Nicht gefunden";f.appendChild(m)}
-  const c=document.createElement("figcaption");c.textContent=(found[i]?"✅ ":"❌ ")+w;f.appendChild(c);g.appendChild(f)});
- }
+ const g=$("gal");g.innerHTML="";const pts=[];
+ words.forEach((w,i)=>{const f=found[i],fg=document.createElement("figure");
+  if(f&&f.img){const im=document.createElement("img");im.src=f.img;fg.appendChild(im)}else{const m=document.createElement("div");m.className="miss";m.textContent=f?"Gefunden (ohne Bild)":"Nicht gefunden";fg.appendChild(m)}
+  const c=document.createElement("figcaption");c.textContent=(f?"✅ ":"❌ ")+w;
+  if(f&&f.loc){const a=document.createElement("a");a.textContent=" 📍 Ort";a.target="_blank";a.rel="noopener";a.href="https://www.google.com/maps/@?api=1&map_action=pano&viewpoint="+f.loc[0]+","+f.loc[1];c.appendChild(a);pts.push([w,f.loc])}
+  fg.appendChild(c);g.appendChild(fg)});
+ const rm=$("resmap");rm.classList.toggle("hid",!(pts.length&&window.L));
+ if(pts.length&&window.L){if(!rmap){rmap=L.map("resmap",{worldCopyJump:true,minZoom:1});L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:18,attribution:"© OpenStreetMap"}).addTo(rmap);rlay=L.layerGroup().addTo(rmap)}
+  rmap.invalidateSize();rlay.clearLayers();
+  pts.forEach(([w,l])=>L.circleMarker(l,{radius:8,color:"#333",weight:2,fillColor:"#e8453c",fillOpacity:1}).bindTooltip(w,{permanent:true,direction:"top"}).addTo(rlay));
+  rmap.fitBounds(pts.map(p=>p[1]),{padding:[40,40],maxZoom:12})}
+}
 function sync(){}
 function cfg(){const ws=$("words").value.split("\n").map(s=>s.trim()).filter(Boolean);const m=Math.max(1,Math.min(180,+$("mins").value||20));return{w:ws,m}}
 $("go").onclick=()=>{const c=cfg();if(!c.w.length){alert("Bitte mindestens einen Begriff eintragen.");return}
